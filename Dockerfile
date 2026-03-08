@@ -1,17 +1,20 @@
-# 使用 Node.js 官方镜像
-FROM node:18-slim
+# 使用更稳定的 Node.js 镜像
+FROM node:20-slim
 
-# 安装 pnpm
-RUN npm install -g pnpm
+# 启用 Corepack 并安装最新的 pnpm
+RUN corepack enable && corepack prepare pnpm@latest --activate
 
-# 设置工作目录
+# 设置 CI 环境下无需交互式确认
+ENV COREPACK_ENABLE_DOWNLOAD_PROMPT=0
+
 WORKDIR /app
 
-# 关键：这里我们只复制 package.json 和 pnpm-lock.yaml
+# 先复制依赖定义文件
 COPY package.json pnpm-lock.yaml ./
 
-# 使用 pnpm 安装依赖
-RUN pnpm install --frozen-lockfile
+# 核心修改：移除 --frozen-lockfile，改用更兼容的安装方式
+# 这能解决锁文件在不同 OS (如 Windows/Mac 到 Linux) 下的细微差异
+RUN pnpm install
 
 # 复制其余源代码
 COPY . .
@@ -19,8 +22,8 @@ COPY . .
 # 执行构建
 RUN pnpm build
 
-# 暴露端口（项目默认是 3000）
+# 暴露端口
 EXPOSE 3000
 
-# 启动命令
+# 启动服务
 CMD ["node", "dist/index.js"]
