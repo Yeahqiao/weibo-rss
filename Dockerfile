@@ -1,26 +1,26 @@
-FROM node:18-alpine as builder
-RUN mkdir /app
-WORKDIR /app
-COPY . /app
-RUN npm i -g npm && npm ci --ignore-scripts && npm run build
+# 使用 Node.js 官方镜像
+FROM node:18-slim
 
-FROM node:18-alpine
-LABEL maintainer="https://github.com/zgq354/weibo-rss"
-RUN mkdir /app
+# 安装 pnpm
+RUN npm install -g pnpm
+
+# 设置工作目录
 WORKDIR /app
 
-# container init
-RUN wget -O /usr/local/bin/dumb-init https://github.com/Yelp/dumb-init/releases/download/v1.2.1/dumb-init_1.2.1_amd64 && \
-    echo "057ecd4ac1d3c3be31f82fc0848bf77b1326a975b4f8423fe31607205a0fe945  /usr/local/bin/dumb-init" | sha256sum -c - && \
-    chmod 755 /usr/local/bin/dumb-init
+# 关键：这里我们只复制 package.json 和 pnpm-lock.yaml
+COPY package.json pnpm-lock.yaml ./
 
-COPY package.json package-lock.json /app/
-RUN npm install --production
+# 使用 pnpm 安装依赖
+RUN pnpm install --frozen-lockfile
 
-# app code
-COPY . /app
-COPY --from=builder /app/dist /app/dist
+# 复制其余源代码
+COPY . .
 
+# 执行构建
+RUN pnpm build
+
+# 暴露端口（项目默认是 3000）
 EXPOSE 3000
-ENTRYPOINT ["/usr/local/bin/dumb-init", "--"]
-CMD ["node", "/app/dist/app.js"]
+
+# 启动命令
+CMD ["node", "dist/index.js"]
