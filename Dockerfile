@@ -7,21 +7,16 @@ ENV COREPACK_ENABLE_DOWNLOAD_PROMPT=0
 
 WORKDIR /app
 
-# 复制依赖文件
+# 先复制依赖文件，利用 Docker 缓存机制
 COPY package.json pnpm-lock.yaml ./
 
-# 安装依赖
+# 正常安装依赖
 RUN pnpm install
 
-# 复制其余源代码
+# 复制其余所有源代码
 COPY . .
 
-# 【核心修复】：在构建前强制开启 skipLibCheck
-# 这会忽略 node_modules 里的那个 ___dirname 拼写错误
-RUN npx json -I -f tsconfig.json -e "this.compilerOptions.skipLibCheck=true" || \
-    sed -i 's/"compilerOptions": {/"compilerOptions": { "skipLibCheck": true, /' tsconfig.json
-
-# 执行构建
+# 执行正常的构建流程
 RUN pnpm build
 
 # 暴露端口
